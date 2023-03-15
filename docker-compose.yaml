@@ -1,0 +1,31 @@
+version: '3.7'
+
+services:
+
+  server:
+    image: diplom
+    build: ./
+    ports:
+      - "5050:5050"
+    depends_on:
+      - database
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://database:3306/diplom
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Password
+      SPRING_LIQUIBASE_URL: jdbc:mysql://database:3306/diplom
+      SPRING_LIQUIBASE_USER: root
+      SPRING_LIQUIBASE_PASSWORD: Password
+
+
+  database:
+    image: mysql
+    volumes:
+      - /mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: Password
+      MYSQL_ROOT_PASSWORD: Password
+      MYSQL_DATABASE: diplom
+    ports:
+      - "3306:3306"
