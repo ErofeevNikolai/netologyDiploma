@@ -22,7 +22,6 @@ public class LogoutService implements LogoutHandler {
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
         String token = request.getHeader("auth-token");
 
-        //TODO насколько верно так писать
         if (token == null || token.equals("")) {
             System.out.println("token is null");
             return;

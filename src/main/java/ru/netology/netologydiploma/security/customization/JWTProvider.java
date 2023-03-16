@@ -14,10 +14,7 @@ import java.util.Date;
 @Component
 @Slf4j
 public class JWTProvider {
-//    @Value("$(secret_key)")
     private String jwtSecret= "secret";
-    //TODO как вынести значение переменной типа Long в properties
-    //@Value("$(timeLiveToken)")
     private Long timeLiveToken = 300L;
 
     public String generateToken(String login) {
