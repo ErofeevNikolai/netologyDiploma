@@ -46,7 +46,7 @@
 //
 //        diplom.withEnv(Map.of("SPRING_DATASOURCE_URL", "jdbc:mysql://database:" + port + "/diplom"));
 //        diplom.start();
-//        
+//
 //        Assertions.assertTrue(diplom.isRunning());
 //    }
 //}
