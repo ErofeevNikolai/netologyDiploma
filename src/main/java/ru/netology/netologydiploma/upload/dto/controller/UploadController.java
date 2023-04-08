@@ -1,7 +1,6 @@
-package ru.netology.netologydiploma.upload.controller;
+package ru.netology.netologydiploma.upload.dto.controller;
 
 import lombok.AllArgsConstructor;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.netology.netologydiploma.security.exception.ErrorGettingFileListException;
 import ru.netology.netologydiploma.security.exception.ErrorUploadFileException;
-import ru.netology.netologydiploma.upload.DTO.NewFileName;
+import ru.netology.netologydiploma.upload.dto.NewFileName;
 import ru.netology.netologydiploma.upload.service.UploadService;
 
 import java.io.IOException;
@@ -22,42 +21,32 @@ public class UploadController {
     @PostMapping("/file")
     public ResponseEntity<?> uploadFileToServer(
             @RequestParam("filename") String filename,
-            @RequestHeader("auth-token") String token,
-            MultipartFile file) throws ErrorUploadFileException {
-        uploadService.postUpload(file, filename, token);
+            MultipartFile file) throws ErrorUploadFileException, IOException {
+        uploadService.postUpload(file, filename);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/file")
-    public ResponseEntity<?> deleteFile(
-            @RequestParam("filename") String filename,
-            @RequestHeader("auth-token") String token) throws IOException {
-
-        uploadService.deleteFile(token, filename);
+    public ResponseEntity<?> deleteFile(@RequestParam("filename") String filename) throws IOException, ErrorUploadFileException {
+        uploadService.deleteFile(filename);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/file")
-    public ResponseEntity<Resource> dowloadFileFromCloud(
-            @RequestParam("filename") String filename,
-            @RequestHeader("auth-token") String token) throws IOException, ErrorUploadFileException {
-
-        Resource resource =  uploadService.downloadFile(token, filename);
+    public ResponseEntity<byte[]> dowloadFileFromCloud(@RequestParam("filename") String filename) throws IOException, ErrorUploadFileException {
         return ResponseEntity
                 .ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(resource);
+                .body(uploadService.downloadFile(filename));
     }
 
     //редактирование имени файла
     @PutMapping("/file")
     public ResponseEntity<?> editFileName(
             @RequestParam("filename") String filename,
-            @RequestHeader("auth-token") String token,
             @RequestBody NewFileName newfileName) throws ErrorUploadFileException {
-
-       uploadService.editFileName(token, filename, newfileName.getFilename());
+        uploadService.editFileName(filename, newfileName.getFilename());
         return ResponseEntity.ok().build();
     }
 
@@ -65,7 +54,6 @@ public class UploadController {
     private ResponseEntity<?> getAllFiles(
             @RequestParam("limit") Integer limit,
             @RequestHeader("auth-token") String token) throws ErrorGettingFileListException {
-        System.out.println(limit);
-        return ResponseEntity.ok(uploadService.getAllFiles(token, limit));
+        return ResponseEntity.ok(uploadService.getAllFiles(limit));
     }
 }

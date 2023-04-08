@@ -1,22 +1,19 @@
 package ru.netology.netologydiploma.upload.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import ru.netology.netologydiploma.security.customization.JWTProvider;
 import ru.netology.netologydiploma.security.entity.User;
 import ru.netology.netologydiploma.security.exception.ErrorDeleteFileException;
 import ru.netology.netologydiploma.security.exception.ErrorGettingFileListException;
 import ru.netology.netologydiploma.security.exception.ErrorInputDataException;
 import ru.netology.netologydiploma.security.exception.ErrorUploadFileException;
 import ru.netology.netologydiploma.security.repository.UserRepository;
-import ru.netology.netologydiploma.upload.DTO.FileSize;
+import ru.netology.netologydiploma.upload.dto.FileSize;
 import ru.netology.netologydiploma.upload.entity.UploadFile;
-import ru.netology.netologydiploma.upload.repository.FileRepository;
 import ru.netology.netologydiploma.upload.repository.UploadRepository;
 
 import javax.transaction.Transactional;
@@ -26,24 +23,15 @@ import java.util.List;
 @Service
 @Slf4j
 public class UploadService {
-    @Value("${upload.path}")
-    private String uploadPath;
-    JWTProvider jwtProvider;
-    UploadRepository uploadRepository;
-    UserRepository userRepository;
-    FileRepository fileRepository;
-
-    public UploadService(JWTProvider jwtProvider, UploadRepository uploadRepository, UserRepository userRepository, FileRepository fileRepository) {
-        this.jwtProvider = jwtProvider;
+    private final UploadRepository uploadRepository;
+    public UploadService(UploadRepository uploadRepository) {
         this.uploadRepository = uploadRepository;
-        this.userRepository = userRepository;
-        this.fileRepository = fileRepository;
     }
 
-    public void postUpload(MultipartFile file, String filename, String requestToken) throws ErrorUploadFileException {
-        //ПОЛУЧЕНИЕ ИМЕНИ ПОЛЬЗОВОТЕЛЯ ПО ЛОГИНУ
-        String userName = jwtProvider.getLoginFromToken(requestToken.substring(7));
-        User user = userRepository.findByUserName(userName);
+    public void postUpload(MultipartFile file, String fileName) throws ErrorUploadFileException {
+        //ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ И ЕГО ИМЕНИ
+        User user = getUserFromAuthentication();
+        String userName = user.getUsername();
 
         //ПРОВЕРКА ЧТО ФАЙИЛ ПЕРЕДАН
         if (file == null) {
@@ -52,74 +40,60 @@ public class UploadService {
         }
 
         //ПРОВЕРКА ЗАПРОСА
-        checkFileNameNotNull(filename, userName);
-        checkingNameUnique(filename, user, userName);
-
-        //СОЗДАНИЕ ОБЩЕЙ ДИРЕКТОРИИ ДЛЯ ОБМЕНА(ЕСЛИ ОНА НЕ СОЗДАВАЛАСЬ РАНЕЕ)
-        fileRepository.checkExistenceDirectory(uploadPath);
-
-        //СОЗАДЕМ StringBuilder ДЛЯ ФОРМИРОВАНИЯ ПУТИ ХРАНЕНИЯ ФАЙЛА
-        StringBuilder link = new StringBuilder().append(uploadPath);
-        link.append("\\");
-
-        //ДОБАВЛЕНИЕ ИМЕНИ ПОЛЬЗОВАТЕЛЯ В ПУТЬ
-        link.append(userName);
-
-        //ПРОВЕКА НАЛИЧИЯ ДИРЕКТОРИЯ ПОЛЬЗОВАТЕЛЯ,
-        //В СЛУЧАЕ ОТСУТВИЯ - СОЗДАНИЕ ДИРЕКТОРИИ
-        fileRepository.checkExistenceDirectory(link.toString());
-
-        //ДОБАВЛЕНИЕ В ССЫЛКУ ИМЕНИ ФАЙЛА
-        link.append("\\").append(filename);
-
-        //ЗАПИСЬ ФАЙЛА НА ДИСК
-        fileRepository.saveFileOnDisk(link.toString(), file, userName, filename);
+        checkFileNameNotNull(fileName, userName);
+        checkingNameUnique(fileName, user, userName);
 
         //ЗАПИСЬ ПУТИ ФАЙЛА В БД
-        uploadRepository.save(new UploadFile(userRepository.findByUserName(userName), filename, link.toString(), Math.toIntExact(file.getSize())));
-        log.info("{} - Внесение данных в БД:  файла {},  ссылка {}:", userName, filename, link);
+        try {
+            uploadRepository.save(new UploadFile(user, fileName, Math.toIntExact(file.getSize()), file.getBytes()));
+            log.info("{} - Внесение данных в БД:  файла {}:", userName, fileName);
+        } catch (Exception e) {
+            throw new ErrorUploadFileException("ОШИБКА ЗАПИСИ ФАЙЛА В СЕРВЕР");
+        }
     }
 
-    public void deleteFile(String requestToken, String fileName) throws IOException {
-        //ПОЛУЧЕНИЕ ИМЕНИ ПОЛЬЗОВОТЕЛЯ ПО ЛОГИНУ
-        String userName = jwtProvider.getLoginFromToken(requestToken.substring(7));
-        //ПОЛУЧЕНИЕ ОБЪЕКТА USER
-        User user = userRepository.findByUserName(userName);
+    public void deleteFile(String fileName) throws ErrorUploadFileException {
+        //ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ И ЕГО ИМЕНИ
+        User user = getUserFromAuthentication();
+        String userName = user.getUsername();
 
         //ПРОВЕРКА ЗАПРОСА
         checkFileNameNotNull(fileName, userName);
         checkDatabaseHasFile(fileName, user, userName);
-
-        //ПОЛУЧЕНИЕ ССЫЛКИ НА ФАЙЛ
-        String link = uploadRepository.findLinkByFileNameAndUser(fileName, user);
-
-        //УДАЛЕНИЕ ФАЙЛА С ДИСКА
-        fileRepository.deleteFileFromDisk(link, userName, fileName);
 
         //УДАЛЕНИЕ ЗАПИСИ ИЗ БД
-        uploadRepository.delete(uploadRepository.findUploadFileByUserAndFileName(user, fileName));
+        try {
+            uploadRepository.delete(uploadRepository.findUploadFileByUserAndFileName(user, fileName));
+            log.info("{} - Сохранение файла {}", userName, fileName);
+        } catch (Exception e) {
+            log.error("{} - ОШИБКА СОХРАНЕНИЯ: файл: {}", userName, fileName);
+            throw new ErrorUploadFileException("ОШИБКА СОХРАНЕНИЯ ЗАПИСИ ФАЙЛА НА СЕРВЕР");
+        }
     }
 
-    public Resource downloadFile(String requestToken, String fileName) throws ErrorUploadFileException, ErrorDeleteFileException {
-        //ПОЛУЧЕНИЕ ИМЕНИ ПОЛЬЗОВОТЕЛЯ ПО ЛОГИНУ
-        String userName = jwtProvider.getLoginFromToken(requestToken.substring(7));
-        //ПОЛУЧЕНИЕ ОБЪЕКТА USER
-        User user = userRepository.findByUserName(userName);
+    public byte[] downloadFile(String fileName) throws ErrorUploadFileException {
+        //ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ И ЕГО ИМЕНИ
+        User user = getUserFromAuthentication();
+        String userName = user.getUsername();
 
         //ПРОВЕРКА ЗАПРОСА
         checkFileNameNotNull(fileName, userName);
         checkDatabaseHasFile(fileName, user, userName);
 
-        String link = uploadRepository.findLinkByFileNameAndUser(fileName, user);
-
-        //ЧТЕНИЕ ФАЙЛА С СЕРВЕРА
-        return fileRepository.downloadFile(link, userName, fileName);
+        //ПОЛУЧЕНИЕ ФАЙЛА
+        try {
+            return uploadRepository.findFileByFileNameAndUser(fileName, user);
+        } catch (Exception e) {
+            log.error("{} - Ошибка получения файла {}", userName, fileName);
+            throw new ErrorUploadFileException("ОШИБКА СКАЧИВАНИЯ ФАЙЛА");
+        }
     }
 
     @Transactional
-    public void editFileName(String requestToken, String fileName, String newFileName) throws ErrorUploadFileException {
-        String userName = jwtProvider.getLoginFromToken(requestToken.substring(7));
-        User user = userRepository.findByUserName(userName);
+    public void editFileName(String fileName, String newFileName) throws ErrorUploadFileException {
+        //ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ И ЕГО ИМЕНИ
+        User user = getUserFromAuthentication();
+        String userName = user.getUsername();
 
         //ПРОВЕРКА ЗАПРОСА
         checkFileNameNotNull(fileName, userName);
@@ -129,27 +103,20 @@ public class UploadService {
         //ПОЛУЧАЕМ ЭЛЕМЕНТ БД
         UploadFile uploadFile = uploadRepository.findUploadFileByUserAndFileName(user, fileName);
 
-        //СОЗАДЕМ StringBuilder ДЛЯ ФОРМИРОВАНИЯ ПУТИ ХРАНЕНИЯ ФАЙЛА
-        StringBuilder newLink = new StringBuilder().append(uploadPath);
-        newLink.append("\\")
-                .append(userName)
-                .append("\\")
-                .append(newFileName);
-
-        //ПЕРЕИМЕНОВЫВАЕМ ФАЙЛ НА ДИСКЕ
-        fileRepository.editFileName(uploadFile.getLink(), newLink.toString(), userName, fileName);
-
         //ИЗМЕНЕНИЕ ЭКЗЕМПЛЧРА БД
         uploadFile.setFileName(newFileName);
-        uploadFile.setLink(newLink.toString());
-
-        uploadRepository.save(uploadFile);
+        try {
+            uploadRepository.save(uploadFile);
+            log.info("{} - Изменение имени фала {} на: файла {}:", userName, fileName, newFileName);
+        } catch (Exception e) {
+            log.error("{} - ошибка переименования файла {}", userName, fileName);
+            throw new ErrorUploadFileException("ОШИБКА ПЕРЕИМЕНОВАНИЯ ФАЙЛА");
+        }
     }
 
-    public List<FileSize> getAllFiles(String requestToken, Integer limit) throws ErrorGettingFileListException {
-
-        //ПОЛУЧЕНИЕ ИМЯ ПО ТОКЕНУ
-        User user = userRepository.findByUserName(jwtProvider.getLoginFromToken(requestToken.substring(7)));
+    public List<FileSize> getAllFiles(Integer limit) throws ErrorGettingFileListException {
+        //ПОЛУЧЕНИЕ ЮЗЕРА
+        User user = getUserFromAuthentication();
 
         //ДЛЯ ЗАДАНИЯ ЛИМИТА ВЫБОРКИ ИСПОЛЬЗУЕМ Pageable
         Pageable pageable = PageRequest.of(0, limit);
@@ -163,7 +130,6 @@ public class UploadService {
         //ЗАПРОС В БД
         return allFiles;
     }
-
 
     //ПРОВЕРКА ЧТО УКАЗАННЫЙ ФАЙЛ ЕСТЬ В БД
     private void checkDatabaseHasFile(String fileName, User user, String userName) {
@@ -187,6 +153,10 @@ public class UploadService {
             log.error("{} - ОШИБКА СОХРАНЕНИЯ: Попытка дублировании имения файла", userName);
             throw new ErrorInputDataException("ФАИЛ С УКАЗАННЫМ ИМЕНЕМ УЖЕ СУЩЕСТВУЕТ");
         }
+    }
 
+    protected User getUserFromAuthentication() {
+        return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 }
+

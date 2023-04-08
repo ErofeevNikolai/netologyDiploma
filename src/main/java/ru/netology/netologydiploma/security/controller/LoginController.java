@@ -1,9 +1,9 @@
-package ru.netology.netologydiploma.security.Controller;
+package ru.netology.netologydiploma.security.controller;
 
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.netology.netologydiploma.security.DTO.LoginRequest;
+import ru.netology.netologydiploma.security.dto.LoginRequest;
 import ru.netology.netologydiploma.security.Service.LoginService;
 
 @RestController

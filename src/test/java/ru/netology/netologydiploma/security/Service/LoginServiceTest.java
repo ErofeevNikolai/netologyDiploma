@@ -8,10 +8,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.core.context.SecurityContextHolder;
 import ru.netology.netologydiploma.security.customization.JWTProvider;
 import ru.netology.netologydiploma.security.repository.AuthorizationRepositoty;
 import ru.netology.netologydiploma.security.repository.UserRepository;
-import ru.netology.netologydiploma.security.DTO.LoginRequest;
+import ru.netology.netologydiploma.security.dto.LoginRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +39,7 @@ class LoginServiceTest {
 
     @BeforeEach
     void beforeStart() {
-        loginRequest = new LoginRequest("Ivan", "1234");
+        loginRequest = new LoginRequest("ivan", "1234");
     }
 
     @Test

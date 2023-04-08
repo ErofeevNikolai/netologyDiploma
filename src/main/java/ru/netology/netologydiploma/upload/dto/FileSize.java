@@ -1,4 +1,4 @@
-package ru.netology.netologydiploma.upload.DTO;
+package ru.netology.netologydiploma.upload.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

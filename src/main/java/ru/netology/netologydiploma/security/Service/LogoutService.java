@@ -15,8 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 @AllArgsConstructor
 public class LogoutService implements LogoutHandler {
 
-    private AuthorizationRepositoty authorizationRepositoty;
-    UserRepository userRepository;
+    private final AuthorizationRepositoty authorizationRepositoty;
 
     @Override
     public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {

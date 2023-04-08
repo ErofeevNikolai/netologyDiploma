@@ -1,6 +1,5 @@
-package ru.netology.netologydiploma.upload.DTO;
+package ru.netology.netologydiploma.upload.dto;
 
-import com.sun.istack.NotNull;
 import lombok.Data;
 
 @Data

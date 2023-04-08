@@ -1,4 +1,4 @@
-package ru.netology.netologydiploma.security.DTO;
+package ru.netology.netologydiploma.security.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

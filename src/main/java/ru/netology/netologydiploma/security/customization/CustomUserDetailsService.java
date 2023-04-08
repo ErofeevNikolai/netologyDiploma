@@ -11,7 +11,7 @@ import ru.netology.netologydiploma.security.repository.UserRepository;
 @Component
 @AllArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
-    UserRepository userRepository;
+    private final UserRepository userRepository;
     @Override
     public User loadUserByUsername(String username) throws UsernameNotFoundException {
       return userRepository.findByUserName(username);

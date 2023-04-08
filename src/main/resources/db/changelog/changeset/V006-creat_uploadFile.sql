@@ -7,6 +7,6 @@ create table diplom.upload_file
     user_id   int          not null,
     file_name varchar(255) not null,
     size      int not null,
-    link      varchar(255) not null unique,
+    file      longblob not null,
     foreign key (user_id) references user (id)
 );

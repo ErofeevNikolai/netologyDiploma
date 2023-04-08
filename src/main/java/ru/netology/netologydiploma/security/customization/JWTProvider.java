@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -14,8 +15,10 @@ import java.util.Date;
 @Component
 @Slf4j
 public class JWTProvider {
-    private String jwtSecret= "secret";
-    private Long timeLiveToken = 300L;
+    @Value("${jwt.token.secret}")
+    private String jwtSecret;
+    @Value("${jwt.token.timeLiveToken}")
+    private Long timeLiveToken;
 
     public String generateToken(String login) {
         //ОПРЕДЕЛЕНИЯ ВРЕМЕНИЯ ЖИЗНИ ТОКЕНА

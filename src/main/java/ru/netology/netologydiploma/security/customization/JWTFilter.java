@@ -19,12 +19,9 @@ import static io.jsonwebtoken.lang.Strings.hasText;
 @AllArgsConstructor
 @Slf4j
 public class JWTFilter extends GenericFilter {
-    public static final String AUTHORIZATION = "Authorization";
-
-    JWTProvider jwtProvider;
-    CustomUserDetailsService customUserDetailsService;
-    UserRepository userRepository;
-    AuthorizationRepositoty authorizationRepositoty;
+    private final JWTProvider jwtProvider;
+    private final CustomUserDetailsService customUserDetailsService;
+    private final AuthorizationRepositoty authorizationRepositoty;
 
 
     @Override

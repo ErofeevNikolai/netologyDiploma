@@ -25,20 +25,21 @@ public class UploadFile {
     @Column(name = "file_name")
     private String fileName;
 
-    @Column(name = "link")
-    private String link;
-
     @Column(name = "size")
     private Integer size;
+
+    @Lob
+    @Column(name = "file")
+    private byte[] file;
 
     public UploadFile() {
 
     }
 
-   public UploadFile(User user, String fileName, String link, Integer size) {
+   public UploadFile(User user, String fileName, Integer size, byte[] file) {
         this.user = user;
         this.fileName = fileName;
-        this.link = link;
         this.size = size;
+        this.file = file;
     }
 }
